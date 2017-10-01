@@ -2,13 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
-	//"github.com/iced-mocha/shared/models"
+	"github.com/iced-mocha/shared/models"
 )
 
 const (
@@ -18,6 +18,18 @@ const (
 type Response struct {
 	resp *http.Response
 	err  error
+}
+
+type Post struct {
+	By          string
+	Descendants int
+	ID          int
+	Kids        []int
+	Score       int
+	Time        int64
+	Title       string
+	Type        string
+	URL         string
 }
 
 func main() {
@@ -41,40 +53,53 @@ func GetPosts(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-        fmt.Printf("got list of post ids\n")
 	queryParams := r.URL.Query()
 	postCountToReturn := DEF_POST_COUNT
 	if arr, ok := queryParams["count"]; ok && len(arr) > 0 {
 		postCountToReturn, err = strconv.Atoi(arr[0])
 		if err != nil {
 			http.Error(w, "'count' could not be converted to an integer", http.StatusNotFound)
+			return
 		}
-		return
 	}
 	if postCountToReturn > len(postIds) {
 		postCountToReturn = len(postIds)
 	}
-        fmt.Printf("posts are gonna be retreived\n")
 	respChan := make(chan Response, postCountToReturn)
 	for i := 0; i < postCountToReturn; i++ {
 		go func() {
-			resp, err := http.Get("https://hacker-news.firebaseio.com/v0/beststories.json")
-			fmt.Printf("sending data into response channel\n")
+			resp, err := http.Get("https://hacker-news.firebaseio.com/v0/item/" + strconv.Itoa(postIds[i]) + ".json")
 			respChan <- Response{resp, err}
 		}()
 	}
-	// var postsToReturn models.Post
+	var postsToReturn []models.Post
 	for i := 0; i < postCountToReturn; i++ {
-		fmt.Printf("getting data from response channel\n")
 		response := <-respChan
-		if response.err != nil {
+		err := response.err
+		resp := response.resp
+		if err != nil {
+
 			continue
 		}
-		var post interface{}
+		var post Post
 		err = json.NewDecoder(resp.Body).Decode(&post)
 		if err != nil {
 			continue
 		}
-		fmt.Printf("Response is %v\n", post)
+		postToReturn := models.Post{
+			ID:       strconv.Itoa(post.ID),
+			Date:     time.Unix(post.Time, 0),
+			Author:   post.By,
+			Title:    post.Title,
+			PostLink: post.URL}
+		postsToReturn = append(postsToReturn, postToReturn)
 	}
+	res, err := json.Marshal(postsToReturn)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(res)
+
 }
