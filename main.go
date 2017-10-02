@@ -67,8 +67,9 @@ func GetPosts(w http.ResponseWriter, r *http.Request) {
 	}
 	respChan := make(chan Response, postCountToReturn)
 	for i := 0; i < postCountToReturn; i++ {
+		id := postIds[i]
 		go func() {
-			resp, err := http.Get("https://hacker-news.firebaseio.com/v0/item/" + strconv.Itoa(postIds[i]) + ".json")
+			resp, err := http.Get("https://hacker-news.firebaseio.com/v0/item/" + strconv.Itoa(id) + ".json")
 			respChan <- Response{resp, err}
 		}()
 	}
