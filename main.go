@@ -34,9 +34,7 @@ type Post struct {
 
 func main() {
 	r := mux.NewRouter()
-
 	r.HandleFunc("/v1/posts", GetPosts).Methods("GET")
-
 	log.Fatal(http.ListenAndServe(":4000", r))
 }
 
@@ -79,7 +77,6 @@ func GetPosts(w http.ResponseWriter, r *http.Request) {
 		err := response.err
 		resp := response.resp
 		if err != nil {
-
 			continue
 		}
 		var post Post
@@ -92,7 +89,8 @@ func GetPosts(w http.ResponseWriter, r *http.Request) {
 			Date:     time.Unix(post.Time, 0),
 			Author:   post.By,
 			Title:    post.Title,
-			PostLink: post.URL}
+			PostLink: post.URL,
+			Platform: models.PlatformHackerNews}
 		postsToReturn = append(postsToReturn, postToReturn)
 	}
 	res, err := json.Marshal(postsToReturn)
