@@ -12,7 +12,9 @@ import (
 )
 
 const (
-	DEF_POST_COUNT = 20
+	defaultPostCount = 20
+	feedURL          = "https://hacker-news.firebaseio.com/v0/beststories.json"
+	postURL          = "https://hacker-news.firebaseio.com/v0/item/"
 )
 
 type Response struct {
@@ -32,45 +34,44 @@ type Post struct {
 	URL         string
 }
 
-func main() {
-	r := mux.NewRouter()
-	r.HandleFunc("/v1/posts", GetPosts).Methods("GET")
-	log.Fatal(http.ListenAndServe(":4000", r))
-}
-
 func GetPosts(w http.ResponseWriter, r *http.Request) {
 	var err error
-	resp, err := http.Get("https://hacker-news.firebaseio.com/v0/beststories.json")
+
+	resp, err := http.Get(feedURL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
+
 	var postIds []int
 	err = json.NewDecoder(resp.Body).Decode(&postIds)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
+
 	queryParams := r.URL.Query()
-	postCountToReturn := DEF_POST_COUNT
+	postCountToReturn := defaultPostCount
 	if arr, ok := queryParams["count"]; ok && len(arr) > 0 {
 		postCountToReturn, err = strconv.Atoi(arr[0])
-		if err != nil {
-			http.Error(w, "'count' could not be converted to an integer", http.StatusNotFound)
-			return
-		}
+	}
+	if err != nil {
+		http.Error(w, "'count' could not be converted to an integer", http.StatusNotFound)
+		return
 	}
 	if postCountToReturn > len(postIds) {
 		postCountToReturn = len(postIds)
 	}
+
 	respChan := make(chan Response, postCountToReturn)
 	for i := 0; i < postCountToReturn; i++ {
 		id := postIds[i]
 		go func() {
-			resp, err := http.Get("https://hacker-news.firebaseio.com/v0/item/" + strconv.Itoa(id) + ".json")
+			resp, err := http.Get(postURL + strconv.Itoa(id) + ".json")
 			respChan <- Response{resp, err}
 		}()
 	}
+
 	var postsToReturn []models.Post
 	for i := 0; i < postCountToReturn; i++ {
 		response := <-respChan
@@ -93,12 +94,19 @@ func GetPosts(w http.ResponseWriter, r *http.Request) {
 			Platform: models.PlatformHackerNews}
 		postsToReturn = append(postsToReturn, postToReturn)
 	}
+
 	res, err := json.Marshal(postsToReturn)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(res)
+}
 
+func main() {
+	r := mux.NewRouter()
+	r.HandleFunc("/v1/posts", GetPosts).Methods(http.MethodGet)
+	log.Fatal(http.ListenAndServe(":4000", r))
 }
