@@ -15,9 +15,9 @@ import (
 const (
 	defaultPostCount = 20
 	port             = ":4000"
-	feedURL          = "https://hacker-news.firebaseio.com/v0/beststories.json"
+	feedURL          = "https://hacker-news.firebaseio.com/v0/topstories.json"
 	postURL          = "https://hacker-news.firebaseio.com/v0/item/"
-	baseURL          = "http://localhost" + port
+	baseURL          = "http://hacker-news-client" + port
 )
 
 type Response struct {
