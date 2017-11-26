@@ -139,7 +139,8 @@ func GetPosts(w http.ResponseWriter, r *http.Request, c *cache.Cache, id func() 
 			Date:     time.Unix(post.Time, 0),
 			Author:   post.By,
 			Title:    post.Title,
-			PostLink: post.URL,
+			PostLink: "https://news.ycombinator.com/item?id=" + strconv.Itoa(post.ID),
+			URL: post.URL,
 			Platform: models.PlatformHackerNews}
 		postsToReturn = append(postsToReturn, postToReturn)
 	}
