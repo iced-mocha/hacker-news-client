@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -30,7 +31,7 @@ type Post struct {
 	Descendants int
 	ID          int
 	Kids        []int
-	Score       int
+	Score       int `json:"score"`
 	Time        int64
 	Title       string
 	Type        string
@@ -128,8 +129,14 @@ func GetPosts(w http.ResponseWriter, r *http.Request, c *cache.Cache, id func() 
 			log.Printf("error getting post: %v", err)
 			continue
 		}
-		var post Post
-		err = json.NewDecoder(resp.Body).Decode(&post)
+		post := &Post{}
+		contents, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Printf("Unable to read body")
+			continue
+		}
+
+		json.Unmarshal(contents, post)
 		if err != nil {
 			log.Printf("error decoding response body %v: %v", resp.Body, err)
 			continue
@@ -140,7 +147,8 @@ func GetPosts(w http.ResponseWriter, r *http.Request, c *cache.Cache, id func() 
 			Author:   post.By,
 			Title:    post.Title,
 			PostLink: "https://news.ycombinator.com/item?id=" + strconv.Itoa(post.ID),
-			URL: post.URL,
+			URL:      post.URL,
+			Score:    post.Score,
 			Platform: models.PlatformHackerNews}
 		postsToReturn = append(postsToReturn, postToReturn)
 	}
